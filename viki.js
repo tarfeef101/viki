@@ -4,6 +4,9 @@ const Discord = require("discord.js");
 // Load up the shell command library
 var exec = require('child_process').exec;
 
+// Load up the queue library
+const Queue = require('./Queue.js');
+
 // Define a function to execute a command
 
 function execute(command, callback)
@@ -14,15 +17,26 @@ function execute(command, callback)
   });
 };
 
-// This is your client. Some people call it `bot`, some people call it `self`, 
-// some might call it `cootchie`. Either way, when you see `client.something`, or `bot.something`,
-// this is what we're refering to. Your client.
-const client = new Discord.Client();
+// Define a new function to search + replace a char in a string
+String.prototype.replaceAll = function(remove, replace)
+{
+    var target = this;
+    return target.split(remove).join(replace);
+};
 
+// Initialize the bot.
+const client = new Discord.Client();
 
 // this allows us to define a voice connection with global scope
 var connection;
 var dispatcher;
+
+// this is the playlist queue for music
+var playlist = new Queue();
+
+// Array of music classes users can call (artist, track, etc)
+const musicTypes = ['track', 'title', 'song', 'artist', 'album'];
+const musicTypesString = "track, title, song, artist, album";
 
 // Here we load the config.json file that contains our token and our prefix values. 
 const config = require("./config.json");
@@ -53,16 +67,38 @@ client.on("guildDelete", guild => {
 });
 
 
+// This plays the next song in the queue, and logs that in the channel where it was requested.
+function play()
+{
+  let nextSong = playlist.dequeue();
+  dispatcher = connection.playFile(nextSong[0]);
+  console.log(`Playing ${nextSong[2]}.`);
+  nextSong[1].reply(`Playing ${nextSong[2]}.`);
+  dispatcher.setVolume(0.2);
+  dispatcher.setBitrate(96);
+
+  dispatcher.on("end", reason => 
+  {
+    if (!(playlist.isEmpty()))
+    {
+      play();
+      console.log(reason);
+    }
+    else
+    {
+      console.log("Playlist exhausted, music playback stopped.");
+    }
+  });
+}
+
 client.on("message", async message =>
 {
   // This event will run on every single message received, from any channel or DM.
   
-  // It's good practice to ignore other bots. This also makes your bot ignore itself
-  // and not get into a spam loop (we call that "botception").
+  // Ignores bot msgs
   if (message.author.bot) return;
   
-  // Also good practice to ignore any message that does not start with our prefix, 
-  // which is set in the configuration file.
+  // ignores if message isn't prefixed
   if (message.content.indexOf(config.prefix) !== 0) return;
   
   // Here we separate our "command" name, and our "arguments" for the command. 
@@ -74,15 +110,17 @@ client.on("message", async message =>
   
   // Let's go with a few common example commands! Feel free to delete or change those.
   
-  if (command === "ping") {
+  if (command === "ping")
+  {
     // Calculates ping between sending a message and editing it, giving a nice round-trip latency.
     // The second ping is an average latency between the bot and the websocket server (one-way, not round-trip)
     const m = await message.channel.send("Ping?");
     m.edit(`Pong! Latency is ${m.createdTimestamp - message.createdTimestamp}ms. API Latency is ${Math.round(client.ping)}ms`);
   }
   
-  if (command === "say") {
-    // makes the bot say something and delete the message. As an example, it's open to anyone to use. 
+  if (command === "say")
+  {
+    // makes the bot say something and delete the original message. As an example, it's open to anyone to use. 
     // To get the "message" itself we join the `args` back into a string with spaces: 
     const sayMessage = args.join(" ");
     // Then we delete the command message (sneaky, right?). The catch just ignores the error with a cute smiley thing.
@@ -171,42 +209,139 @@ client.on("message", async message =>
     channelVar.leave();
   }
   
-  if (command === "play")
+  if (command === "addmusic") // adds songs to queue, starts playback if none already
   {
-	  // this command plays the song if one song matches the query given in beets
-	  
-    const song = args.join(' '); // creates a single string of all args (the song)
-    var path; // this will hold the filepath of our song
-    exec(`beet ls -p title:${song} | wc -l`, function (error, stdout, stderr)
+    var type = args[0];
+    if (!(musicTypes.includes(type)))
+    {
+      return message.reply("Sorry, that is not a valid command. Please enter something from: " + musicTypesString);
+    }
+    if (type == 'song' || type == 'track') type = 'title'; // account for poor beets API
+    args.splice(0, 1);
+    const query = args.join(' '); // creates a single string of all args (the query)
+    var path; // this will hold the filepaths from our query
+    exec(`beet ls -p ${type}:${query} | wc -l`, function (error, stdout, stderr)
     {
       if (error)
       {
-        return message.reply(`Sorry, I encountered an issue looking for that song: ${error}`);
+        return message.reply(`Sorry, I encountered an issue looking for that: ${error}`);
       }
-      else if (stdout !== '1\n')
+      else if (stdout === '\n' || stdout === '' || stdout === undefined)
       {
-        return message.reply(`There were ${stdout} songs that matched your search. Please give the full song name, or wait until I become a less lazy dev.`);
+        return message.reply(`There were no results that matched your search. Please give the type and name of your query (e.g. song songname, album albumname...)`);
       }
       else
-      {
-        exec(`beet ls -p title:${song}`, function (error, stdout, stderr)
+      {  
+        exec(`beet ls -p ${type}:${query}`, function (error, stdout, stderr)
         {
           if (error)
           {
-            return message.reply(`Sorry, I encountered an issue looking for that song: ${error}`);
+            return message.reply(`Sorry, I encountered an issue looking for that: ${error}`);
           }
           else
           {
             path = stdout.trim();
-            console.log(song);
-            console.log(path);
-            dispatcher = connection.playFile(path);
-            dispatcher.setVolume(0.75);
-            dispatcher.setBitrate(2048);
+            path = path.split("\n"); // now an array of paths (with spaces)
+            
+            // for each song, get the path and readable info, send to queue
+            for (var i = 0; i < path.length; i++)
+            {
+              let filepathRaw = path[i];
+              path[i] = path[i].replaceAll(" ", "\\ ");
+              path[i] = path[i].replaceAll("'", "\\'");
+              path[i] = path[i].replaceAll("&", "\\\46");
+              path[i] = path[i].replaceAll("(", "\\(");
+              path[i] = path[i].replaceAll(")", "\\)");
+              let filepath = path[i]; // path[i] descoped in callback
+
+              exec(`beet ls ${path[i]}`, function (error, stdouts, stderr)
+              {
+                if (error)
+                {
+                  return message.reply(`Sorry, I encountered an issue looking for song ${i}: ${error}`);
+                }
+                else
+                {
+                  stdouts = stdouts.trim();
+                  playlist.enqueue([filepathRaw, message, stdouts]);
+                  
+                  // check if music is playing, if not start it
+                  if ((dispatcher === undefined || dispatcher.destroyed == true) && !(playlist.isEmpty()))
+                  {
+                    play();
+                  }
+                }
+              });
+            }
           }
         });
       }
+
+      let amt = stdout.trim();
+      message.reply(`${amt} songs added!`);
     });
+  }
+  
+  if (command === 'stop') // clears playlist, stops music
+  {
+    playlist.reset();
+    dispatcher.end();
+    console.log("Playback stopped, playlist cleared.")
+  }
+  
+  if (command === 'next') // returns next song in playlist, or informs that there is none
+  {
+    if (playlist.isEmpty())
+    {
+      message.reply("The playlist is empty.");
+    }
+    else
+    {
+      const next = playlist.peek();
+      message.reply(`Next song is: ${next[2]}.`);
+    }
+  }
+  
+  if (command === 'pause') // pauses the dispatcher if playing, or does nothing
+  {
+    dispatcher.pause();
+    message.reply("Playback paused.");
+  }
+  
+  if (command === 'resume') // resumes the dispatcher, or does nothing
+  {
+    dispatcher.resume();
+    message.reply("Playback resumed.");
+  }
+  
+  if (command === 'skip') // starts playing the next song in the queue if it exists
+  {
+    if (playlist.isEmpty())
+    {
+      message.reply("Sorry, the playlist is empty.");
+    }
+    else
+    {
+      function resolveEnd()
+      {
+	return new Promise((success, fail) =>
+        {
+          dispatcher.end();
+
+          dispatcher.on("end", () =>
+          {
+            success('Track skipped!');
+          });
+
+          dispatcher.on("error", () =>
+          {
+            fail('Couldn\'t skip :(');
+          });
+        });
+      }
+
+      resolveEnd();
+    }
   }
 });
 
