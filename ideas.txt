@@ -1,2 +1,0 @@
-this is a command to find files matching a keyword (case insensitive) in a dir (recursive):
-find /home/tdedhar/Music/ -iname *toxicity* -type f

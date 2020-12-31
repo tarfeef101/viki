@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  viki:
+    build: .
+    image: tarfeef101/viki
+    restart: on-failure
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "1"
+    volumes:
+      - "/home/tdedhar/Music:/home/tdedhar/Music"
+      - "/home/tdedhar/.config/beets:/home/tdedhar/.config/beets"
