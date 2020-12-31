@@ -1,12 +1,43 @@
 // Load up the discord.js library
 const Discord = require("discord.js");
 
+// Load up the shell command library
+var exec = require('child_process').exec;
+
+// Load up the queue library
+const Queue = require('./Queue.js');
+
+// Define a function to execute a command
+
+function execute(command, callback)
+{
+  exec(command, function(error, stdout, stderr)
+  {
+    callback(stdout);
+  });
+};
+
+// Define a new function to search + replace a char in a string
+String.prototype.replaceAll = function(remove, replace)
+{
+    var target = this;
+    return target.split(remove).join(replace);
+};
+
+
 // Initialize the bot.
 const client = new Discord.Client();
 
 // this allows us to define a voice connection with global scope
 var connection;
 var dispatcher;
+
+// this is the playlist queue for music
+var playlist = new Queue();
+
+// Array of music classes users can call (artist, track, etc)
+const musicTypes = ['track', 'title', 'song', 'artist', 'album'];
+const musicTypesString = "track, title, song, artist, album";
 
 // Here we load the config.json file that contains our token and our prefix values.
 const config = require("./config.json");
@@ -17,9 +48,9 @@ const config = require("./config.json");
 client.on("ready", () =>
 {
   // This event will run if the bot starts, and logs in, successfully.
-  console.log(`Bot has started, with ${client.users.size} users, in ${client.channels.size} channels of ${client.guilds.size} guilds.`);
+  console.log(`Bot has started, with ${client.users.cache.size} users, in ${client.channels.cache.size} channels of ${client.guilds.cache.size} guilds.`);
 
-  console.log(`users: ${client.users}`);
+  console.log(`users: ${Array.from(client.users.cache.values()).map(each => each.username)}`);
 
   // Example of changing the bot's playing game to something useful. `client.user` is what the
   // docs refer to as the "ClientUser".
