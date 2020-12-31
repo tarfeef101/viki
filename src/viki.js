@@ -1,14 +1,24 @@
 // Load up the discord.js library
 const Discord = require("discord.js");
-
 // Load up the shell command library
 var exec = require('child_process').exec;
-
 // Load up the queue library
 const Queue = require('./Queue.js');
+// Initialize the bot.
+const client = new Discord.Client();
+// this allows us to define a voice connection with global scope
+var connection;
+var dispatcher;
+// this is the playlist queue for music
+var playlist = new Queue();
+// Array of music classes users can call (artist, track, etc)
+const musicTypes = ['track', 'title', 'song', 'artist', 'album'];
+const musicTypesString = "track, title, song, artist, album";
+// Here we load the config.json file that contains our token and our prefix values.
+const config = require("./config.json");
+
 
 // Define a function to execute a command
-
 function execute(command, callback)
 {
   exec(command, function(error, stdout, stderr)
@@ -23,26 +33,6 @@ String.prototype.replaceAll = function(remove, replace)
     var target = this;
     return target.split(remove).join(replace);
 };
-
-
-// Initialize the bot.
-const client = new Discord.Client();
-
-// this allows us to define a voice connection with global scope
-var connection;
-var dispatcher;
-
-// this is the playlist queue for music
-var playlist = new Queue();
-
-// Array of music classes users can call (artist, track, etc)
-const musicTypes = ['track', 'title', 'song', 'artist', 'album'];
-const musicTypesString = "track, title, song, artist, album";
-
-// Here we load the config.json file that contains our token and our prefix values.
-const config = require("./config.json");
-// config.token contains the bot's token
-// config.prefix contains the message prefix.
 
 
 client.on("ready", () =>
