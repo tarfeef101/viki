@@ -34,6 +34,29 @@ String.prototype.replaceAll = function(remove, replace)
     return target.split(remove).join(replace);
 };
 
+// This plays the next song in the queue, and logs that in the channel where it was requested.
+function play()
+{
+  let nextSong = playlist.dequeue();
+  dispatcher = connection.play(nextSong[0]);
+  console.log(`Playing ${nextSong[2]}.`);
+  nextSong[1].reply(`Playing ${nextSong[2]}.`);
+  dispatcher.setVolume(0.2);
+  dispatcher.setBitrate(96);
+
+  dispatcher.on("end", reason => 
+  {
+    if (!(playlist.isEmpty()))
+    {
+      play();
+      console.log(reason);
+    }
+    else
+    {
+      console.log("Playlist exhausted, music playback stopped.");
+    }
+  });
+}
 
 client.on("ready", () =>
 {
@@ -61,8 +84,21 @@ client.on("guildDelete", guild => {
 });
 
 
-client.on('message', msg => {
-  if (msg.content === '!ping') {
+client.on('message', async msg => {
+  // Ignores bot msgs
+  if (msg.author.bot) return;
+  
+  // ignores if message isn't prefixed
+  if (msg.content.indexOf(config.prefix) !== 0) return;
+  
+  // Here we separate our "command" name, and our "arguments" for the command. 
+  // e.g. if we have the message "+say Is this the real life?" , we'll get the following:
+  // command = say
+  // args = ["Is", "this", "the", "real", "life?"]
+  const args = msg.content.slice(config.prefix.length).trim().split(/ +/g);
+  const command = args.shift().toLowerCase();
+
+  if (command === 'ping') {
     msg.reply('pong');
     channel = msg.guild.channels.cache.find(each => each.name === "General" && each.type === "voice");
     if (channel)
