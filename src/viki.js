@@ -44,7 +44,7 @@ function play()
   var nextSong = cursong;
   
   // if we aren't repeating cursong, dequeue
-  if (!repeatone)
+  if (!repeatone && cursong)
   {
     played.push(cursong);
     nextSong = playlist.dequeue();
@@ -68,7 +68,6 @@ function play()
     if (!(playlist.isEmpty()))
     {
       play();
-      console.log(reason);
     }
     else
     {
@@ -88,7 +87,7 @@ function play()
 
   // what to do if it ends
   dispatcher.on("finish", endHandler);
-  dispatcher.on("close", endHandler);
+  //dispatcher.on("close", endHandler);
 }
 
 // riven stuff
@@ -322,7 +321,7 @@ client.on('message', async msg => {
                   playlist.enqueue([filepathRaw, msg, stdouts]);
                   
                   // check if music is playing, if not start it
-                  if ((dispatcher === undefined || dispatcher.ended == true) && !(playlist.isEmpty()))
+                  if ((!dispatcher || dispatcher.ended || dispatcher.destroyed || dispatcher.writableFinished || dispatcher.writableEnded) && !(playlist.isEmpty()))
                   {
                     play();
                   }
@@ -384,11 +383,13 @@ client.on('message', async msg => {
     else
     {
       const list = playlist.read();
+      var retstr = ""
       
       for (var i = 0; i < list.length; i++)
       {
-        msg.channel.send(`Song #${i + 1} is: ${list[i][2]}.`);
+        retstr += `Song #${i + 1} is: ${list[i][2]}.\n`;
       }
+      msg.channel.send(retstr);
     }
   }
   
