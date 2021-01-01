@@ -98,18 +98,42 @@ client.on('message', async msg => {
   const args = msg.content.slice(config.prefix.length).trim().split(/ +/g);
   const command = args.shift().toLowerCase();
 
-  if (command === 'ping') {
-    msg.reply('pong');
-    channel = msg.guild.channels.cache.find(each => each.name === "General" && each.type === "voice");
+  if (command === 'ping')
+  {
+    const m = await msg.channel.send('pong');
+    m.edit(`Pong! Latency is ${m.createdTimestamp - msg.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms`);
+  }
+
+  if (command === 'join')
+  {
+    const channelName = args.join(' ');
+    const channel = msg.guild.channels.cache.find(each => each.name === channelName && each.type === "voice");
+
     if (channel)
     {
-      console.log(channel.name);
-
       channel.join().then(conn =>
       {
         connection = conn;
-        console.log('Connected!');
       }).catch(console.error);
+    }
+    else
+    {
+      msg.reply(`Sorry ${msg.author.username}, that channel doesn't appear to exist.`);
+    }
+  }
+
+  if (command === 'leave')
+  {
+    const channelName = args.join(' ');
+    const channel = msg.guild.channels.cache.find(each => each.name === channelName && each.type === "voice");
+
+    if (channel)
+    {
+      channel.leave();
+    }
+    else
+    {
+      msg.reply(`Sorry ${msg.author.username}, that channel doesn't appear to exist.`);
     }
   }
 });
