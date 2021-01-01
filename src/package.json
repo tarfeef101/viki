@@ -1,7 +1,7 @@
 {
   "name": "viki",
-  "version": "0.0.1",
-  "description": "go fuck yourself",
+  "version": "0.1.1",
+  "description": "A music bot for local file streaming using the beets music DB",
   "main": "viki.js",
   "license": "MIT",
   "dependencies": {
@@ -9,6 +9,7 @@
     "bufferutil": "^4.0.2",
     "discord.js": "^12.5.1",
     "erlpack": "discord/erlpack",
+    "ffmpeg-static": "^4.2.7",
     "libsodium-wrappers": "^0.7.8",
     "utf-8-validate": "^5.0.3",
     "zlib-sync": "^0.1.7"

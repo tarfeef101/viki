@@ -44,7 +44,7 @@ function play()
   dispatcher.setVolume(0.2);
   dispatcher.setBitrate(96);
 
-  dispatcher.on("end", reason => 
+  dispatcher.on("finish", reason => 
   {
     if (!(playlist.isEmpty()))
     {
@@ -134,6 +134,141 @@ client.on('message', async msg => {
     else
     {
       msg.reply(`Sorry ${msg.author.username}, that channel doesn't appear to exist.`);
+    }
+  }
+
+  if (command === "addmusic") // adds songs to queue, starts playback if none already
+  {
+    var type = args[0];
+    if (!(musicTypes.includes(type)))
+    {
+      return msg.reply("Sorry, that is not a valid command. Please enter something from: " + musicTypesString);
+    }
+    if (type == 'song' || type == 'track') type = 'title'; // account for poor beets API
+    args.splice(0, 1);
+    const query = args.join(' '); // creates a single string of all args (the query)
+    var path; // this will hold the filepaths from our query
+    exec(`beet ls -p ${type}:${query} | wc -l`, function (error, stdout, stderr)
+    {
+      if (error)
+      {
+        return msg.reply(`Sorry, I encountered an issue looking for that: ${error}`);
+      }
+      else if (stdout === '\n' || stdout === '' || stdout === undefined)
+      {
+        return msg.reply(`There were no results that matched your search. Please give the type and name of your query (e.g. song songname, album albumname...)`);
+      }
+      else
+      {  
+        exec(`beet ls -p ${type}:${query}`, function (error, stdout, stderr)
+        {
+          if (error)
+          {
+            return msg.reply(`Sorry, I encountered an issue looking for that: ${error}`);
+          }
+          else
+          {
+            path = stdout.trim();
+            path = path.split("\n"); // now an array of paths (with spaces)
+            
+            // for each song, get the path and readable info, send to queue
+            for (var i = 0; i < path.length; i++)
+            {
+              let filepathRaw = path[i];
+              path[i] = path[i].replaceAll(" ", "\\ ");
+              path[i] = path[i].replaceAll("'", "\\'");
+              path[i] = path[i].replaceAll("&", "\\\46");
+              path[i] = path[i].replaceAll("(", "\\(");
+              path[i] = path[i].replaceAll(")", "\\)");
+              let filepath = path[i]; // path[i] descoped in callback
+
+              exec(`beet ls ${path[i]}`, function (error, stdouts, stderr)
+              {
+                if (error)
+                {
+                  return msg.reply(`Sorry, I encountered an issue looking for song ${i}: ${error}`);
+                }
+                else
+                {
+                  stdouts = stdouts.trim();
+                  playlist.enqueue([filepathRaw, msg, stdouts]);
+                  
+                  // check if music is playing, if not start it
+                  if ((dispatcher === undefined || dispatcher.destroyed == true) && !(playlist.isEmpty()))
+                  {
+                    play();
+                  }
+                }
+              });
+            }
+          }
+        });
+      }
+
+      let amt = stdout.trim();
+      msg.reply(`${amt} songs added!`);
+    });
+  }
+  
+  if (command === 'stop') // clears playlist, stops music
+  {
+    playlist.reset();
+    dispatcher.destroy();
+    console.log("Playback stopped, playlist cleared.")
+  }
+  
+  if (command === 'next') // returns next song in playlist, or informs that there is none
+  {
+    if (playlist.isEmpty())
+    {
+      msg.reply("The playlist is empty.");
+    }
+    else
+    {
+      const next = playlist.peek();
+      msg.reply(`Next song is: ${next[2]}.`);
+    }
+  }
+  
+  if (command === 'pause') // pauses the dispatcher if playing, or does nothing
+  {
+    dispatcher.pause();
+    msg.reply("Playback paused.");
+  }
+  
+  if (command === 'resume') // resumes the dispatcher, or does nothing
+  {
+    dispatcher.resume();
+    msg.reply("Playback resumed.");
+  }
+  
+  if (command === 'skip') // starts playing the next song in the queue if it exists
+  {
+    if (playlist.isEmpty())
+    {
+      msg.reply("Sorry, the playlist is empty.");
+    }
+    else
+    {
+      function resolveEnd()
+      {
+        return new Promise((success, fail) =>
+        {
+          dispatcher.destroy();
+
+          dispatcher.on("finish", () =>
+          {
+            success('Track skipped!');
+          });
+
+          dispatcher.on("error", () =>
+          {
+            fail('Couldn\'t skip :(');
+          });
+        });
+      }
+
+      resolveEnd();
     }
   }
 });
