@@ -18,6 +18,6 @@ To get this running on your server, other than the normal creation of a bot user
 
 ## Caveats
 - as mentioned above, yes, this is a very narrow use case
-- anyone you whitelist can technically execute arbitrary code on your host system through `addmusic`. so that's great
+- anyone you whitelist can technically execute arbitrary code in your container (and since there's bind mounts, place code on the host) through `addmusic`. so that's great
 - yes, the whitelist is an array in the config file, not role-based
 - yes, these are solvable problems
