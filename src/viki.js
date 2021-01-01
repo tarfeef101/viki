@@ -9,8 +9,12 @@ const client = new Discord.Client();
 // this allows us to define a voice connection with global scope
 var connection;
 var dispatcher;
-// this is the playlist queue for music
+// playlist-related globals
 var playlist = new Queue();
+var played = []
+var cursong;
+var repeatall = false;
+var repeatone = false;
 // Array of music classes users can call (artist, track, etc)
 const musicTypes = ['track', 'title', 'song', 'artist', 'album'];
 const musicTypesString = "track, title, song, artist, album";
@@ -37,14 +41,29 @@ String.prototype.replaceAll = function(remove, replace)
 // This plays the next song in the queue, and logs that in the channel where it was requested.
 function play()
 {
-  let nextSong = playlist.dequeue();
+  var nextSong = cursong;
+  
+  // if we aren't repeating cursong, dequeue
+  if (!repeatone)
+  {
+    played.push(cursong);
+    nextSong = playlist.dequeue();
+  }
+  // if we set repeat, but had no songs played yet
+  // we should dequeue
+  else if (!nextSong)
+  {
+    nextSong = playlist.dequeue();
+  }
+
   dispatcher = connection.play(nextSong[0]);
   console.log(`Playing ${nextSong[2]}.`);
-  nextSong[1].reply(`Playing ${nextSong[2]}.`);
+  nextSong[1].channel.send(`Playing ${nextSong[2]}.`);
   dispatcher.setVolume(0.2);
   dispatcher.setBitrate(96);
+  cursong = nextSong;
 
-  dispatcher.on("finish", reason => 
+  var endHandler = function endHandler(reason)
   {
     if (!(playlist.isEmpty()))
     {
@@ -53,10 +72,71 @@ function play()
     }
     else
     {
-      console.log("Playlist exhausted, music playback stopped.");
+      if (repeatall)
+      {
+        playlist.makeFilled(played);
+        played = [];
+        play();
+        console.log("Repeat all encountered.");
+      }
+      else
+      {
+        console.log("Playlist exhausted, music playback stopped.");
+      }
     }
+  }
+
+  // what to do if it ends
+  dispatcher.on("finish", endHandler);
+  dispatcher.on("close", endHandler);
+}
+
+// riven stuff
+// Load up the request library
+var Request = require("request");
+var unrolledStats = new Map();
+var rolledStats = new Map();
+var cacheTime = 0;
+
+function updateRivens()
+{
+  Request.get("http://n9e5v4d8.ssl.hwcdn.net/repos/weeklyRivensPC.json", (error, response, body) =>
+  {
+    if (error) return console.dir(error);
+
+    var rivenArr = JSON.parse(body);
+
+    for (var i = 0; i < rivenArr.length; i++)
+    {
+      var info = Object.assign({}, rivenArr[i]);
+      delete info.itemType;
+      delete info.compatibility;
+      delete info.rerolled;
+
+      // veiled rivens
+      if (!(rivenArr[i].compatibility))
+      {
+        // set value in map to info
+        unrolledStats.set(rivenArr[i].itemType.toUpperCase(), info);
+      }
+      else // weapon-specific, so check if rolled or unrolled
+      {
+        if (rivenArr[i].rerolled === true)
+        {
+          rolledStats.set(rivenArr[i].compatibility, info);
+        }
+        else
+        {
+          unrolledStats.set(rivenArr[i].compatibility, info);
+        }
+      }
+    }  
   });
 }
+
+updateRivens();
+cacheTime = new Date().getTime() / 1000;
+
 
 client.on("ready", () =>
 {
@@ -137,12 +217,60 @@ client.on('message', async msg => {
     }
   }
 
+  if (command === "prices")
+  {
+    // parse args 
+    var type = args[0];
+    args.splice(0, 1);
+    var query = args.join(' ');
+    query = query.toUpperCase();
+   
+    // check cache freshness
+    delta = (new Date().getTime() / 1000) - cacheTime;
+    if (delta > 3600) updateRivens();
+ 
+    if (type == "rolled")
+    {
+      var result = rolledStats.get(query);
+      if (!(result))
+      {
+        return msg.channel.send("Sorry, I couldn't find that weapon. Please check your message and try again.");
+      }
+      result = JSON.stringify(result, undefined, 2);
+      return msg.channel.send(result);
+    }
+    else if (type == "unrolled")
+    {
+      var result = unrolledStats.get(query);
+      if (!(result))
+      {
+        return msg.channel.send("Sorry, I couldn't find that weapon. Please check your message and try again.");
+      }
+      result = JSON.stringify(result, undefined, 2);
+      return msg.channel.send(result);
+    }
+    else
+    {
+      return msg.channel.send("Sorry, please enter a command in the form: prices unrolled/rolled [weapon_name]");
+    }
+  }
+
   if (command === "addmusic") // adds songs to queue, starts playback if none already
   {
+    if (!(config.whitelist.includes(msg.author.tag)))
+    {
+      return msg.channel.send("Sorry, you're not allowed to run this command. Please contact the server owner to acquire that permission.")
+    }
+
+    if (!connection)
+    {
+      return msg.channel.send("Please add me to a voice channel before adding music.")
+    }
+
     var type = args[0];
     if (!(musicTypes.includes(type)))
     {
-      return msg.reply("Sorry, that is not a valid command. Please enter something from: " + musicTypesString);
+      return msg.channel.send("Sorry, that is not a valid command. Please enter something from: " + musicTypesString);
     }
     if (type == 'song' || type == 'track') type = 'title'; // account for poor beets API
     args.splice(0, 1);
@@ -152,11 +280,11 @@ client.on('message', async msg => {
     {
       if (error)
       {
-        return msg.reply(`Sorry, I encountered an issue looking for that: ${error}`);
+        return msg.channel.send(`Sorry, I encountered an issue looking for that: ${error}`);
       }
       else if (stdout === '\n' || stdout === '' || stdout === undefined)
       {
-        return msg.reply(`There were no results that matched your search. Please give the type and name of your query (e.g. song songname, album albumname...)`);
+        return msg.channel.send(`There were no results that matched your search. Please give the type and name of your query (e.g. song songname, album albumname...)`);
       }
       else
       {  
@@ -164,7 +292,7 @@ client.on('message', async msg => {
         {
           if (error)
           {
-            return msg.reply(`Sorry, I encountered an issue looking for that: ${error}`);
+            return msg.channel.send(`Sorry, I encountered an issue looking for that: ${error}`);
           }
           else
           {
@@ -186,7 +314,7 @@ client.on('message', async msg => {
               {
                 if (error)
                 {
-                  return msg.reply(`Sorry, I encountered an issue looking for song ${i}: ${error}`);
+                  return msg.channel.send(`Sorry, I encountered an issue looking for song ${i}: ${error}`);
                 }
                 else
                 {
@@ -194,7 +322,7 @@ client.on('message', async msg => {
                   playlist.enqueue([filepathRaw, msg, stdouts]);
                   
                   // check if music is playing, if not start it
-                  if ((dispatcher === undefined || dispatcher.destroyed == true) && !(playlist.isEmpty()))
+                  if ((dispatcher === undefined || dispatcher.ended == true) && !(playlist.isEmpty()))
                   {
                     play();
                   }
@@ -206,47 +334,109 @@ client.on('message', async msg => {
       }
 
       let amt = stdout.trim();
-      msg.reply(`${amt} songs added!`);
+      msg.channel.send(`${amt} songs added!`);
     });
   }
   
   if (command === 'stop') // clears playlist, stops music
   {
     playlist.reset();
-    dispatcher.destroy();
-    console.log("Playback stopped, playlist cleared.")
+    repeatone = false;
+    repeatall = false;
+    played = [];
+    dispatcher.end();
+    console.log("Playback stopped, playlist cleared.");
+    msg.channel.send("Playback stopped, playlist cleared.");
   }
   
   if (command === 'next') // returns next song in playlist, or informs that there is none
   {
     if (playlist.isEmpty())
     {
-      msg.reply("The playlist is empty.");
+      msg.channel.send("The playlist is empty.");
     }
     else
     {
       const next = playlist.peek();
-      msg.reply(`Next song is: ${next[2]}.`);
+      msg.channel.send(`Next song is: ${next[2]}.`);
+    }
+  }
+
+  if (command === 'previous')
+  {
+    if (played.length <= 1)
+    {
+      msg.channel.send("No previous song.");
+    }
+    else
+    {
+      let temp = played.slice(-1).pop();
+      msg.channel.send(`Previous song was: ${temp[2]}`);
+    }
+  }
+
+  if (command === 'playlist')
+  {
+    if (playlist.isEmpty())
+    {
+      msg.channel.send("The playlist is empty.");
+    }
+    else
+    {
+      const list = playlist.read();
+      
+      for (var i = 0; i < list.length; i++)
+      {
+        msg.channel.send(`Song #${i + 1} is: ${list[i][2]}.`);
+      }
     }
   }
   
   if (command === 'pause') // pauses the dispatcher if playing, or does nothing
   {
-    dispatcher.pause();
-    msg.reply("Playback paused.");
+    dispatcher.pause(true);
+    msg.channel.send("Playback paused.");
   }
-  
+
   if (command === 'resume') // resumes the dispatcher, or does nothing
   {
     dispatcher.resume();
-    msg.reply("Playback resumed.");
+    msg.channel.send("Playback resumed.");
   }
-  
+
+  if (command === 'repeat')
+  {
+    var param = args[0];
+    
+    if (param === 'one' && cursong)
+    {
+      repeatone = true; // causes play function to repeat current cursong
+      repeatall = false;
+      msg.channel.send(`Repeating ${cursong[2]}.`);
+    }
+    else if (param === 'all') // track playlist, and repeat whole thing once empty
+    {
+      repeatone = false;
+      repeatall = true;
+      msg.channel.send("Repeating playlist.");
+    }
+    else if (param === 'off') // resets repeat variables
+    {
+      repeatone = false;
+      repeatall = false;
+      msg.channel.send("Repeat off.");
+    }
+    else
+    {
+      msg.channel.send("There was nothing to repeat, or an invalid option was given. Valid options are one, all, and off.");
+    }
+  }
+
   if (command === 'skip') // starts playing the next song in the queue if it exists
   {
     if (playlist.isEmpty())
     {
-      msg.reply("Sorry, the playlist is empty.");
+      msg.channel.send("Sorry, the playlist is empty.");
     }
     else
     {
@@ -254,11 +444,52 @@ client.on('message', async msg => {
       {
         return new Promise((success, fail) =>
         {
-          dispatcher.destroy();
+          dispatcher.end();
 
           dispatcher.on("finish", () =>
           {
             success('Track skipped!');
+          });
+
+          dispatcher.on("error", () =>
+          {
+            fail('Couldn\'t skip :(');
+          });
+        });
+      }
+
+      resolveEnd();
+    }
+  }
+
+  if (command === 'back') // if possible, adds cursong to queue at the front, starts playing last song
+  {
+    if (played.length == 0)
+    {
+      msg.channel.send("Sorry, there is no song to skip back to.");
+    }
+    else
+    {
+      function resolveEnd()
+      {
+        return new Promise((success, fail) =>
+        {
+          /*
+          playlist.reset();
+          repeatone = false;
+          repeatall = false;
+          played = [];
+          dispatcher.end();
+          */
+          playlist.cut(cursong); // put cursong back on
+          let tempsong = played[played.length - 1]; // captures the song to go back to
+          played = played.splice(played.length - 1, 1); // removes the last song from played
+          playlist.cut(tempsong); // put old song on the front
+          dispatcher.end(); // stop playing wrong song
+
+          dispatcher.on("finish", () =>
+          {
+            success('Track reversed!');
           });
 
           dispatcher.on("error", () =>
