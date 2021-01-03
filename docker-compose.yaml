@@ -4,8 +4,8 @@ services:
   viki:
     build: .
     image: tarfeef101/viki
-    #restart: on-failure
-    restart: "no"
+    restart: on-failure
+    #restart: "no"
     logging:
       driver: "json-file"
       options:
