@@ -55,6 +55,8 @@ The bot recognizes commands sent by non-bot users, prepended with the `prefix` c
   - Skips to the next song in the playlist
 - `back`
   - Goes back to replay the previous song, and adds the song that was playing at the time of the command back onto the front of the playlist
+- `shuffle`
+  - Shuffles the playlist's order
 
 ## Caveats
 - as mentioned above, yes, this is a very narrow use case
