@@ -57,7 +57,6 @@ function play()
   }
 
   dispatcher = connection.play(nextSong[0]);
-  console.log(`Playing ${nextSong[2]}.`);
   nextSong[1].channel.send(`Playing ${nextSong[2]}.`);
   dispatcher.setVolume(0.2);
   dispatcher.setBitrate(96);
@@ -76,7 +75,6 @@ function play()
         playlist.makeFilled(played);
         played = [];
         play();
-        console.log("Repeat all encountered.");
       }
       else
       {
@@ -534,6 +532,12 @@ client.on('message', async msg =>
 
         resolveEnd();
       }
+      break;
+
+    // shuffles the playlist
+    case 'shuffle':
+      playlist.shuffle();
+      msg.channel.send('Done!');
       break;
 
     // respond w/ error if command not recognized

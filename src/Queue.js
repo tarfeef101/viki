@@ -84,7 +84,7 @@ class Queue
     {
       // we want a random index between the end and i, inclusive
       const index = rand(i, this.arr.length - 1);
-      const temp = this.arr[i];
+      const temp = this.arr[index];
       this.arr[index] = this.arr[i];
       this.arr[i] = temp;
     }
