@@ -254,7 +254,7 @@ client.on('message', async msg =>
       }
       else
       {
-        return msg.channel.send("Sorry, please enter a command in the form: prices unrolled/rolled [weapon_name]");
+        return msg.channel.send("Sorry, please enter a command in the form: price unrolled/rolled [weapon_name]");
       }
       break;
 
