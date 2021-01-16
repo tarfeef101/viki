@@ -183,7 +183,7 @@ client.on('message', async msg =>
   {
     // respond w/ bot latency
     case 'ping':
-      const m = await msg.channel.send('pong');
+      var m = await msg.channel.send('pong');
       m.edit(`Pong! Latency is ${m.createdTimestamp - msg.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms`);
       break;
 
@@ -272,7 +272,7 @@ client.on('message', async msg =>
       }
       if (type == 'song' || type == 'track') type = 'title'; // account for poor beets API
       args.splice(0, 1);
-      const query = args.join(' '); // creates a single string of all args (the query)
+      var query = args.join(' '); // creates a single string of all args (the query)
       var path; // this will hold the filepaths from our query
       exec(`beet ls ${type}:${query} | wc -l`, function (error, stdout, stderr)
       {
@@ -312,7 +312,7 @@ client.on('message', async msg =>
       }
       if (type == 'song' || type == 'track') type = 'title'; // account for poor beets API
       args.splice(0, 1);
-      const query = args.join(' '); // creates a single string of all args (the query)
+      query = args.join(' '); // creates a single string of all args (the query)
       var path; // this will hold the filepaths from our query
       exec(`beet ls -p ${type}:${query} | wc -l`, function (error, stdout, stderr)
       {
@@ -421,7 +421,7 @@ client.on('message', async msg =>
       }
       else
       {
-        const list = playlist.read();
+        var list = playlist.read();
         var retstr = ""
         
         for (var i = 0; i < list.length; i++)
