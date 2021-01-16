@@ -189,8 +189,8 @@ client.on('message', async msg =>
 
     // join the specified void channel
     case 'join':
-      const channelName = args.join(' ');
-      const channel = msg.guild.channels.cache.find(each => each.name === channelName && each.type === "voice");
+      var channelName = args.join(' ');
+      var channel = msg.guild.channels.cache.find(each => each.name === channelName && each.type === "voice");
 
       if (channel)
       {
@@ -207,8 +207,8 @@ client.on('message', async msg =>
 
     // leave the specified voice channel
     case 'leave':
-      const channelName = args.join(' ');
-      const channel = msg.guild.channels.cache.find(each => each.name === channelName && each.type === "voice");
+      var channelName = args.join(' ');
+      var channel = msg.guild.channels.cache.find(each => each.name === channelName && each.type === "voice");
 
       if (channel)
       {
@@ -395,7 +395,7 @@ client.on('message', async msg =>
       }
       else
       {
-        const next = playlist.peek();
+        var next = playlist.peek();
         msg.channel.send(`Next song is: ${next[2]}.`);
       }
       break;
