@@ -156,14 +156,16 @@ client.on("guildCreate", guild =>
   client.user.setActivity(`Serving ${client.guilds.cache.size} servers`);
 });
 
-client.on("guildDelete", guild => {
+client.on("guildDelete", guild =>
+{
   // this event triggers when the bot is removed from a guild.
   console.log(`I have been removed from: ${guild.name} (id: ${guild.id})`);
   client.user.setActivity("Taking Over Chicago");
 });
 
 
-client.on('message', async msg => {
+client.on('message', async msg => 
+{
   // Ignores bot msgs
   if (msg.author.bot) return;
   
@@ -177,331 +179,331 @@ client.on('message', async msg => {
   const args = msg.content.slice(config.prefix.length).trim().split(/ +/g);
   const command = args.shift().toLowerCase();
 
-  if (command === 'ping')
+  switch (command)
   {
-    const m = await msg.channel.send('pong');
-    m.edit(`Pong! Latency is ${m.createdTimestamp - msg.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms`);
-  }
+    // respond w/ bot latency
+    case 'ping':
+      const m = await msg.channel.send('pong');
+      m.edit(`Pong! Latency is ${m.createdTimestamp - msg.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms`);
+      break;
 
-  if (command === 'join')
-  {
-    const channelName = args.join(' ');
-    const channel = msg.guild.channels.cache.find(each => each.name === channelName && each.type === "voice");
+    // join the specified void channel
+    case 'join':
+      const channelName = args.join(' ');
+      const channel = msg.guild.channels.cache.find(each => each.name === channelName && each.type === "voice");
 
-    if (channel)
-    {
-      channel.join().then(conn =>
+      if (channel)
       {
-        connection = conn;
-      }).catch(console.error);
-    }
-    else
-    {
-      msg.reply(`Sorry ${msg.author.username}, that channel doesn't appear to exist.`);
-    }
-  }
-
-  if (command === 'leave')
-  {
-    const channelName = args.join(' ');
-    const channel = msg.guild.channels.cache.find(each => each.name === channelName && each.type === "voice");
-
-    if (channel)
-    {
-      channel.leave();
-    }
-    else
-    {
-      msg.reply(`Sorry ${msg.author.username}, that channel doesn't appear to exist.`);
-    }
-  }
-
-  if (command === "prices")
-  {
-    // parse args 
-    var type = args[0];
-    args.splice(0, 1);
-    var query = args.join(' ');
-    query = query.toUpperCase();
-   
-    // check cache freshness
-    delta = (new Date().getTime() / 1000) - cacheTime;
-    if (delta > 3600) updateRivens();
- 
-    if (type == "rolled")
-    {
-      var result = rolledStats.get(query);
-      if (!(result))
-      {
-        return msg.channel.send("Sorry, I couldn't find that weapon. Please check your message and try again.");
-      }
-      result = JSON.stringify(result, undefined, 2);
-      return msg.channel.send(result);
-    }
-    else if (type == "unrolled")
-    {
-      var result = unrolledStats.get(query);
-      if (!(result))
-      {
-        return msg.channel.send("Sorry, I couldn't find that weapon. Please check your message and try again.");
-      }
-      result = JSON.stringify(result, undefined, 2);
-      return msg.channel.send(result);
-    }
-    else
-    {
-      return msg.channel.send("Sorry, please enter a command in the form: prices unrolled/rolled [weapon_name]");
-    }
-  }
-
-  if (command === "addmusic") // adds songs to queue, starts playback if none already
-  {
-    if (!(config.whitelist.includes(msg.author.tag)))
-    {
-      return msg.channel.send("Sorry, you're not allowed to run this command. Please contact the server owner to acquire that permission.")
-    }
-
-    if (!connection)
-    {
-      return msg.channel.send("Please add me to a voice channel before adding music.")
-    }
-
-    var type = args[0];
-    if (!(musicTypes.includes(type)))
-    {
-      return msg.channel.send("Sorry, that is not a valid command. Please enter something from: " + musicTypesString);
-    }
-    if (type == 'song' || type == 'track') type = 'title'; // account for poor beets API
-    args.splice(0, 1);
-    const query = args.join(' '); // creates a single string of all args (the query)
-    var path; // this will hold the filepaths from our query
-    exec(`beet ls -p ${type}:${query} | wc -l`, function (error, stdout, stderr)
-    {
-      if (error)
-      {
-        return msg.channel.send(`Sorry, I encountered an issue looking for that: ${error}`);
-      }
-      else if (stdout === '\n' || stdout === '' || stdout === undefined)
-      {
-        return msg.channel.send(`There were no results that matched your search. Please give the type and name of your query (e.g. song songname, album albumname...)`);
+        channel.join().then(conn =>
+        {
+          connection = conn;
+        }).catch(console.error);
       }
       else
-      {  
-        exec(`beet ls -p ${type}:${query}`, function (error, stdout, stderr)
+      {
+        msg.reply(`Sorry ${msg.author.username}, that channel doesn't appear to exist.`);
+      }
+      break;
+
+    // leave the specified voice channel
+    case 'leave':
+      const channelName = args.join(' ');
+      const channel = msg.guild.channels.cache.find(each => each.name === channelName && each.type === "voice");
+
+      if (channel)
+      {
+        channel.leave();
+      }
+      else
+      {
+        msg.reply(`Sorry ${msg.author.username}, that channel doesn't appear to exist.`);
+      }
+      break;
+
+    // return the price of a riven for the specified weapon
+    case 'price':
+      // parse args 
+      var type = args[0];
+      args.splice(0, 1);
+      var query = args.join(' ');
+      query = query.toUpperCase();
+
+      // check cache freshness
+      delta = (new Date().getTime() / 1000) - cacheTime;
+      if (delta > 3600) updateRivens();
+
+      if (type == "rolled")
+      {
+        var result = rolledStats.get(query);
+        if (!(result))
         {
-          if (error)
+          return msg.channel.send("Sorry, I couldn't find that weapon. Please check your message and try again.");
+        }
+        result = JSON.stringify(result, undefined, 2);
+        return msg.channel.send(result);
+      }
+      else if (type == "unrolled")
+      {
+        var result = unrolledStats.get(query);
+        if (!(result))
+        {
+          return msg.channel.send("Sorry, I couldn't find that weapon. Please check your message and try again.");
+        }
+        result = JSON.stringify(result, undefined, 2);
+        return msg.channel.send(result);
+      }
+      else
+      {
+        return msg.channel.send("Sorry, please enter a command in the form: prices unrolled/rolled [weapon_name]");
+      }
+      break;
+
+    // add the songs returned by the user query to the playlist, start if nothing playing
+    case 'addmusic':
+      if (!(config.whitelist.includes(msg.author.tag)))
+      {
+        return msg.channel.send("Sorry, you're not allowed to run this command. Please contact the server owner to acquire that permission.")
+      }
+
+      if (!connection)
+      {
+        return msg.channel.send("Please add me to a voice channel before adding music.")
+      }
+
+      var type = args[0];
+      if (!(musicTypes.includes(type)))
+      {
+        return msg.channel.send("Sorry, that is not a valid command. Please enter something from: " + musicTypesString);
+      }
+      if (type == 'song' || type == 'track') type = 'title'; // account for poor beets API
+      args.splice(0, 1);
+      const query = args.join(' '); // creates a single string of all args (the query)
+      var path; // this will hold the filepaths from our query
+      exec(`beet ls -p ${type}:${query} | wc -l`, function (error, stdout, stderr)
+      {
+        if (error)
+        {
+          return msg.channel.send(`Sorry, I encountered an issue looking for that: ${error}`);
+        }
+        else if (stdout === '\n' || stdout === '' || stdout === undefined)
+        {
+          return msg.channel.send(`There were no results that matched your search. Please give the type and name of your query (e.g. song songname, album albumname...)`);
+        }
+        else
+        {  
+          exec(`beet ls -p ${type}:${query}`, function (error, stdout, stderr)
           {
-            return msg.channel.send(`Sorry, I encountered an issue looking for that: ${error}`);
-          }
-          else
-          {
-            path = stdout.trim();
-            path = path.split("\n"); // now an array of paths (with spaces)
-            
-            // for each song, get the path and readable info, send to queue
-            for (var i = 0; i < path.length; i++)
+            if (error)
             {
-              let filepathRaw = path[i];
-              path[i] = path[i].replaceAll(" ", "\\ ");
-              path[i] = path[i].replaceAll("'", "\\'");
-              path[i] = path[i].replaceAll("&", "\\\46");
-              path[i] = path[i].replaceAll("(", "\\(");
-              path[i] = path[i].replaceAll(")", "\\)");
-              let filepath = path[i]; // path[i] descoped in callback
-
-              exec(`beet ls ${path[i]}`, function (error, stdouts, stderr)
-              {
-                if (error)
-                {
-                  return msg.channel.send(`Sorry, I encountered an issue looking for song ${i}: ${error}`);
-                }
-                else
-                {
-                  stdouts = stdouts.trim();
-                  playlist.enqueue([filepathRaw, msg, stdouts]);
-                  
-                  // check if music is playing, if not start it
-                  if ((!dispatcher || dispatcher.ended || dispatcher.destroyed || dispatcher.writableFinished || dispatcher.writableEnded) && !(playlist.isEmpty()))
-                  {
-                    play();
-                  }
-                }
-              });
+              return msg.channel.send(`Sorry, I encountered an issue looking for that: ${error}`);
             }
-          }
-        });
-      }
+            else
+            {
+              path = stdout.trim();
+              path = path.split("\n"); // now an array of paths (with spaces)
 
-      let amt = stdout.trim();
-      msg.channel.send(`${amt} songs added!`);
-    });
-  }
-  
-  if (command === 'stop') // clears playlist, stops music
-  {
-    playlist.reset();
-    repeatone = false;
-    repeatall = false;
-    played = [];
-    dispatcher.end();
-    console.log("Playback stopped, playlist cleared.");
-    msg.channel.send("Playback stopped, playlist cleared.");
-  }
-  
-  if (command === 'next') // returns next song in playlist, or informs that there is none
-  {
-    if (playlist.isEmpty())
-    {
-      msg.channel.send("The playlist is empty.");
-    }
-    else
-    {
-      const next = playlist.peek();
-      msg.channel.send(`Next song is: ${next[2]}.`);
-    }
-  }
+              // for each song, get the path and readable info, send to queue
+              for (var i = 0; i < path.length; i++)
+              {
+                let filepathRaw = path[i];
+                path[i] = path[i].replaceAll(" ", "\\ ");
+                path[i] = path[i].replaceAll("'", "\\'");
+                path[i] = path[i].replaceAll("&", "\\\46");
+                path[i] = path[i].replaceAll("(", "\\(");
+                path[i] = path[i].replaceAll(")", "\\)");
+                let filepath = path[i]; // path[i] descoped in callback
 
-  if (command === 'previous')
-  {
-    if (played.length <= 1)
-    {
-      msg.channel.send("No previous song.");
-    }
-    else
-    {
-      let temp = played.slice(-1).pop();
-      msg.channel.send(`Previous song was: ${temp[2]}`);
-    }
-  }
+                exec(`beet ls ${path[i]}`, function (error, stdouts, stderr)
+                {
+                  if (error)
+                  {
+                    return msg.channel.send(`Sorry, I encountered an issue looking for song ${i}: ${error}`);
+                  }
+                  else
+                  {
+                    stdouts = stdouts.trim();
+                    playlist.enqueue([filepathRaw, msg, stdouts]);
+                    
+                    // check if music is playing, if not start it
+                    if ((!dispatcher || dispatcher.ended || dispatcher.destroyed || dispatcher.writableFinished || dispatcher.writableEnded) && !(playlist.isEmpty()))
+                    {
+                      play();
+                    }
+                  }
+                });
+              }
+            }
+          });
+        }
 
-  if (command === 'playlist')
-  {
-    if (playlist.isEmpty())
-    {
-      msg.channel.send("The playlist is empty.");
-    }
-    else
-    {
-      const list = playlist.read();
-      var retstr = ""
-      
-      for (var i = 0; i < list.length; i++)
-      {
-        retstr += `Song #${i + 1} is: ${list[i][2]}.\n`;
-      }
-      msg.channel.send(retstr);
-    }
-  }
-  
-  if (command === 'pause') // pauses the dispatcher if playing, or does nothing
-  {
-    dispatcher.pause(true);
-    msg.channel.send("Playback paused.");
-  }
+        let amt = stdout.trim();
+        msg.channel.send(`${amt} songs added!`);
+      });
+      break;
 
-  if (command === 'resume') // resumes the dispatcher, or does nothing
-  {
-    dispatcher.resume();
-    msg.channel.send("Playback resumed.");
-  }
-
-  if (command === 'repeat')
-  {
-    var param = args[0];
-    
-    if (param === 'one' && cursong)
-    {
-      repeatone = true; // causes play function to repeat current cursong
-      repeatall = false;
-      msg.channel.send(`Repeating ${cursong[2]}.`);
-    }
-    else if (param === 'all') // track playlist, and repeat whole thing once empty
-    {
-      repeatone = false;
-      repeatall = true;
-      msg.channel.send("Repeating playlist.");
-    }
-    else if (param === 'off') // resets repeat variables
-    {
+    // stops playback
+    case 'stop':
+      playlist.reset();
       repeatone = false;
       repeatall = false;
-      msg.channel.send("Repeat off.");
-    }
-    else
-    {
-      msg.channel.send("There was nothing to repeat, or an invalid option was given. Valid options are one, all, and off.");
-    }
-  }
+      played = [];
+      dispatcher.end();
+      console.log("Playback stopped, playlist cleared.");
+      msg.channel.send("Playback stopped, playlist cleared.");
+      break;
 
-  if (command === 'skip') // starts playing the next song in the queue if it exists
-  {
-    if (playlist.isEmpty())
-    {
-      msg.channel.send("Sorry, the playlist is empty.");
-    }
-    else
-    {
-      function resolveEnd()
+    // returns the next song in the playlist
+    case 'next':
+      if (playlist.isEmpty())
       {
-        return new Promise((success, fail) =>
-        {
-          dispatcher.end();
-
-          dispatcher.on("finish", () =>
-          {
-            success('Track skipped!');
-          });
-
-          dispatcher.on("error", () =>
-          {
-            fail('Couldn\'t skip :(');
-          });
-        });
+        msg.channel.send("The playlist is empty.");
       }
-
-      resolveEnd();
-    }
-  }
-
-  if (command === 'back') // if possible, adds cursong to queue at the front, starts playing last song
-  {
-    if (played.length == 0)
-    {
-      msg.channel.send("Sorry, there is no song to skip back to.");
-    }
-    else
-    {
-      function resolveEnd()
+      else
       {
-        return new Promise((success, fail) =>
-        {
-          /*
-          playlist.reset();
-          repeatone = false;
-          repeatall = false;
-          played = [];
-          dispatcher.end();
-          */
-          playlist.cut(cursong); // put cursong back on
-          let tempsong = played[played.length - 1]; // captures the song to go back to
-          played = played.splice(played.length - 1, 1); // removes the last song from played
-          playlist.cut(tempsong); // put old song on the front
-          dispatcher.end(); // stop playing wrong song
-
-          dispatcher.on("finish", () =>
-          {
-            success('Track reversed!');
-          });
-
-          dispatcher.on("error", () =>
-          {
-            fail('Couldn\'t skip :(');
-          });
-        });
+        const next = playlist.peek();
+        msg.channel.send(`Next song is: ${next[2]}.`);
       }
+      break;
 
-      resolveEnd();
-    }
+    // returns the last song played before the current one
+    case 'previous':
+      if (played.length <= 1)
+      {
+        msg.channel.send("No previous song.");
+      }
+      else
+      {
+        let temp = played.slice(-1).pop();
+        msg.channel.send(`Previous song was: ${temp[2]}`);
+      }
+      break;
+
+    // returns the playlist
+    case 'playlist':
+      if (playlist.isEmpty())
+      {
+        msg.channel.send("The playlist is empty.");
+      }
+      else
+      {
+        const list = playlist.read();
+        var retstr = ""
+        
+        for (var i = 0; i < list.length; i++)
+        {
+          retstr += `Song #${i + 1} is: ${list[i][2]}.\n`;
+        }
+        msg.channel.send(retstr);
+      }
+      break;
+
+    // pauses the playback
+    case 'pause':
+      dispatcher.pause(true);
+      msg.channel.send("Playback paused.");
+      break;
+
+    // resumes the playback
+    case 'resume':
+      dispatcher.resume();
+      msg.channel.send("Playback resumed.");
+      break;
+
+    // sets repeat behaviour
+    case 'repeat':
+      var param = args[0];
+
+      if (param === 'one' && cursong)
+      {
+        repeatone = true; // causes play function to repeat current cursong
+        repeatall = false;
+        msg.channel.send(`Repeating ${cursong[2]}.`);
+      }
+      else if (param === 'all') // track playlist, and repeat whole thing once empty
+      {
+        repeatone = false;
+        repeatall = true;
+        msg.channel.send("Repeating playlist.");
+      }
+      else if (param === 'off') // resets repeat variables
+      {
+        repeatone = false;
+        repeatall = false;
+        msg.channel.send("Repeat off.");
+      }
+      else
+      {
+        msg.channel.send("There was nothing to repeat, or an invalid option was given. Valid options are one, all, and off.");
+      }
+      break;
+
+    // skips to the next song
+    case 'skip':
+      if (playlist.isEmpty())
+      {
+        msg.channel.send("Sorry, the playlist is empty.");
+      }
+      else
+      {
+        function resolveEnd()
+        {
+          return new Promise((success, fail) =>
+          {
+            dispatcher.end();
+  
+            dispatcher.on("finish", () =>
+            {
+              success('Track skipped!');
+            });
+  
+            dispatcher.on("error", () =>
+            {
+              fail('Couldn\'t skip :(');
+            });
+          });
+        }
+
+        resolveEnd();
+      }
+      break;
+
+    // goes back 1 song (plays last song, adds cursong back to the queue)
+    case 'back':
+      if (played.length == 0)
+      {
+        msg.channel.send("Sorry, there is no song to skip back to.");
+      }
+      else
+      {
+        function resolveEnd()
+        {
+          return new Promise((success, fail) =>
+          {
+            playlist.insert(cursong, 0); // put cursong back on the front
+            let tempsong = played[played.length - 1]; // captures the song to go back to
+            played = played.splice(played.length - 1, 1); // removes the last song from played
+            playlist.insert(tempsong, 0); // put old song on the front
+            dispatcher.end(); // stop playing wrong song
+
+            dispatcher.on("finish", () =>
+            {
+              success('Track reversed!');
+            });
+  
+            dispatcher.on("error", () =>
+            {
+              fail('Couldn\'t skip :(');
+            });
+          });
+        }
+
+        resolveEnd();
+      }
+      break;
+
+    // respond w/ error if command not recognized
+    default:
+      msg.channel.send("Sorry, that command isn't recognized.");
   }
 });
 

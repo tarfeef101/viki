@@ -71,6 +71,24 @@ class Queue
   {
     this.arr = [];
   }
+
+  // randomizes remaining elements of the Queue
+  shuffle()
+  {
+    function rand(min, max)
+    {
+      return Math.floor(Math.random() * (max - min + 1) + min);
+    }
+
+    for (var i = 0; i < this.arr.length; i++)
+    {
+      // we want a random index between the end and i, inclusive
+      const index = rand(i, this.arr.length - 1);
+      const temp = this.arr[i];
+      this.arr[index] = this.arr[i];
+      this.arr[i] = temp;
+    }
+  }
 }
 
 module.exports = Queue;
