@@ -402,7 +402,7 @@ client.on('message', async msg =>
 
     // returns the last song played before the current one
     case 'previous':
-      if (played.length <= 1)
+      if (played.length < 1)
       {
         msg.channel.send("No previous song.");
       }
