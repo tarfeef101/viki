@@ -274,7 +274,7 @@ client.on('message', async msg =>
       args.splice(0, 1);
       var query = args.join(' '); // creates a single string of all args (the query)
       var path; // this will hold the filepaths from our query
-      exec(`beet ls ${type}:${query} | wc -l`, function (error, stdout, stderr)
+      exec(`beet ls ${type}:${query}`, function (error, stdout, stderr)
       {
         if (error)
         {
