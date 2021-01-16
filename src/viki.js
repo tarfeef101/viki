@@ -258,6 +258,41 @@ client.on('message', async msg =>
       }
       break;
 
+    // searches the DB for songs matching the user query, and responds w/ that info in chat
+    case 'search':
+      if (!(config.whitelist.includes(msg.author.tag)))
+      {
+        return msg.channel.send("Sorry, you're not allowed to run this command. Please contact the server owner to acquire that permission.")
+      }
+
+      var type = args[0];
+      if (!(musicTypes.includes(type)))
+      {
+        return msg.channel.send("Sorry, that is not a valid command. Please enter something from: " + musicTypesString);
+      }
+      if (type == 'song' || type == 'track') type = 'title'; // account for poor beets API
+      args.splice(0, 1);
+      const query = args.join(' '); // creates a single string of all args (the query)
+      var path; // this will hold the filepaths from our query
+      exec(`beet ls ${type}:${query} | wc -l`, function (error, stdout, stderr)
+      {
+        if (error)
+        {
+          return msg.channel.send(`Sorry, I encountered an issue looking for that: ${error}`);
+        }
+        else if (stdout === '\n' || stdout === '' || stdout === undefined)
+        {
+          return msg.channel.send('There were no results that matched your search. Please give the type and name of your query (e.g. song songname, album albumname...)');
+        }
+        else
+        {
+          var result = 'Results:\n';
+          result += stdout.trim();
+          msg.channel.send(result);
+        }
+      });
+      break;
+
     // add the songs returned by the user query to the playlist, start if nothing playing
     case 'addmusic':
       if (!(config.whitelist.includes(msg.author.tag)))

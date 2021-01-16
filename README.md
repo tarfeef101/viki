@@ -30,10 +30,13 @@ The bot recognizes commands sent by non-bot users, prepended with the `prefix` c
 - `price type weapon`
   - Returns riven price data for the `weapon` of mod type `type`, where `type` is either `rolled` or `unrolled`
   - e.g. `!price unrolled kuva bramma`
-- `addmusic querytype querystring`
-  - Looks up music in the host DB, and adds matching songs to the playlist, and starts playing if nothing is playing already
+- `search querytype querystring`
+  - Looks up music in the host DB, and adds responds w/ the results
   - Valid `querytypes` include `['track', 'title', 'song', 'artist', 'album']`
   - `querystring` is the actual query, so if `querytype` was `artist`, a valid `querystring` would be `green day`
+- `addmusic querytype querystring`
+  - Looks up music in the host DB, and adds matching songs to the playlist, and starts playing if nothing is playing already
+  - Same argument syntax as `search`
 - `stop`
   - Stops playback and clears the playlist
 - `next`
